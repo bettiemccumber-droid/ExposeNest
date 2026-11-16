@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Prose } from '../components/Prose'
 import { SocialWidget } from '../components/SocialWidget'
 import { getArticle, getProduct, relatedArticles } from '../lib/content'
 import { formatDate } from '../lib/format'
 import { usePageTitle, useReadingProgress } from '../lib/hooks'
+import { fetchPublishedArticle } from '../lib/published'
 import { NotFound } from './NotFound'
 
 /**
@@ -11,10 +13,39 @@ import { NotFound } from './NotFound'
  */
 export function ArticlePage() {
   const { slug = '' } = useParams()
-  const article = getArticle(slug)
+  const local = getArticle(slug)
+  const [remote, setRemote] = useState(null)
+  const [checked, setChecked] = useState(Boolean(local))
   const progress = useReadingProgress()
-  usePageTitle(article ? `${article.title} · ExposeNest` : 'Story not found · ExposeNest')
 
+  useEffect(() => {
+    if (local) return undefined
+    let cancel = false
+    fetchPublishedArticle(slug).then((post) => {
+      if (cancel) return
+      setRemote(post)
+      setChecked(true)
+    })
+    return () => {
+      cancel = true
+    }
+  }, [local, slug])
+
+  usePageTitle(local ? `${local.title} · ExposeNest` : remote ? `${remote.title} · ExposeNest` : 'Story not found · ExposeNest')
+
+  if (!local && !checked) return null
+  if (!local && remote) {
+    return (
+      <article className="wrap story-frame">
+        <div className="story">
+          <h1>{remote.title}</h1>
+          <p className="story-dek">{remote.excerpt}</p>
+          <div className="prose" dangerouslySetInnerHTML={{ __html: remote.bodyHtml || '' }} />
+        </div>
+      </article>
+    )
+  }
+  const article = local
   if (!article) return <NotFound />
 
   const product = article.productSlug ? getProduct(article.productSlug) : undefined

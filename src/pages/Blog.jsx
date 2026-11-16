@@ -1,8 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArticleCard } from '../components/ArticleCard'
 import { CATEGORIES, PAGE_SIZE } from '../data/site'
+import { articles } from '../data/articles'
 import { filterArticles } from '../lib/content'
+import { fetchPublishedList } from '../lib/published'
 import { usePageTitle } from '../lib/hooks'
 
 /**
@@ -16,9 +18,31 @@ export function Blog() {
   const sort = searchParams.get('sort') === 'oldest' ? 'oldest' : 'newest'
   const page = Math.max(1, Number(searchParams.get('page') || 1))
 
+  const [extra, setExtra] = useState([])
+  useEffect(() => {
+    fetchPublishedList().then((posts) => {
+      setExtra(posts.filter((post) => post?.slug).map((post) => ({
+        slug: post.slug,
+        title: post.title,
+        excerpt: post.excerpt || '',
+        category: post.category || 'Reviews',
+        date: post.date,
+        readTime: `${post.readTime || 1} min`,
+        image: post.image || '',
+        imageAlt: post.title,
+        author: post.author || 'ExposeNest',
+        tags: Array.isArray(post.keywords) ? post.keywords : [],
+        content: [],
+      })))
+    })
+  }, [])
   const filtered = useMemo(
-    () => filterArticles({ category, query, sort }),
-    [category, query, sort],
+    () => {
+      const known = new Set(articles.map((item) => item.slug))
+      const remote = extra.filter((item) => !known.has(item.slug))
+      return filterArticles({ category, query, sort, source: [...remote, ...articles] })
+    },
+    [category, query, sort, extra],
   )
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const current = Math.min(page, pageCount)

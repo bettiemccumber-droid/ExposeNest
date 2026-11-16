@@ -8,7 +8,7 @@ import { sortByDate } from './format'
  * @returns {string}
  */
 export function articleSearchText(article) {
-  const blocks = article.content.flatMap((block) => {
+  const blocks = (article.content || []).flatMap((block) => {
     const parts = []
     if (block.text) parts.push(block.text)
     if (block.label) parts.push(block.label)
@@ -26,9 +26,9 @@ export function articleSearchText(article) {
  * 按分类、关键词和日期排序文章。默认由新到旧。
  * @param {{ category?: string, query?: string, sort?: string }} [options]
  */
-export function filterArticles({ category = 'All', query = '', sort = 'newest' } = {}) {
+export function filterArticles({ category = 'All', query = '', sort = 'newest', source } = {}) {
   const needle = query.trim().toLowerCase()
-  const filtered = articles.filter((article) => {
+  const filtered = (source || articles).filter((article) => {
     if (category !== 'All' && article.category !== category) return false
     if (!needle) return true
     return articleSearchText(article).includes(needle)
