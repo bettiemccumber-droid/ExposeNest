@@ -74,7 +74,7 @@ export function ArticlePage() {
   return (
     <>
       <div className="progress" style={{ width: `${progress}%` }} />
-      <header className="story-stage" style={{ backgroundImage: `url(${cover})` }}>
+      <header className="story-stage" style={{ backgroundImage: `url("${cover}")` }}>
         <div className="wrap story-stage__copy">
           <p className="crumb">
             <Link to="/blog">Blog</Link> / {article.category}
