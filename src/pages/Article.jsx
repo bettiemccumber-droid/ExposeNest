@@ -9,7 +9,28 @@ import { fetchPublishedArticle } from '../lib/published'
 import { NotFound } from './NotFound'
 
 /**
- * 博客文章详情，含正文、关联产品和推荐阅读。
+ * 把接口文章收成详情页可用的结构。
+ * @param {object} post
+ */
+function fromPublished(post) {
+  const minutes = typeof post.readTime === 'number' ? post.readTime : Number(post.readTime) || 1
+  return {
+    slug: post.slug,
+    title: post.title,
+    excerpt: post.excerpt || '',
+    category: post.category || 'Product Review',
+    date: post.date,
+    readTime: String(post.readTime).includes('min') ? String(post.readTime) : `${minutes} min`,
+    author: post.author || 'ExposeNest Desk',
+    image: post.image || '',
+    imageAlt: post.title,
+    bodyHtml: post.bodyHtml || '',
+    productSlug: '',
+  }
+}
+
+/**
+ * 博客文章详情：本地块文章与 AffilliAds 发布文章共用同一版式。
  */
 export function ArticlePage() {
   const { slug = '' } = useParams()
@@ -23,7 +44,7 @@ export function ArticlePage() {
     let cancel = false
     fetchPublishedArticle(slug).then((post) => {
       if (cancel) return
-      setRemote(post)
+      setRemote(post ? fromPublished(post) : null)
       setChecked(true)
     })
     return () => {
@@ -31,30 +52,29 @@ export function ArticlePage() {
     }
   }, [local, slug])
 
-  usePageTitle(local ? `${local.title} · ExposeNest` : remote ? `${remote.title} · ExposeNest` : 'Story not found · ExposeNest')
+  const article = local || remote
+  usePageTitle(article ? `${article.title} · ExposeNest` : checked ? 'Story not found · ExposeNest' : 'ExposeNest')
 
-  if (!local && !checked) return null
-  if (!local && remote) {
+  if (!local && !checked) {
     return (
-      <article className="wrap story-frame">
-        <div className="story">
-          <h1>{remote.title}</h1>
-          <p className="story-dek">{remote.excerpt}</p>
-          <div className="prose" dangerouslySetInnerHTML={{ __html: remote.bodyHtml || '' }} />
-        </div>
-      </article>
+      <div className="wrap story-loading" aria-busy="true">
+        <p className="eyebrow">Loading</p>
+        <p>Opening the note…</p>
+      </div>
     )
   }
-  const article = local
+
   if (!article) return <NotFound />
 
   const product = article.productSlug ? getProduct(article.productSlug) : undefined
   const related = relatedArticles(article.slug, article.category)
+  const cover = article.image || '/images/hero.jpg'
+  const isHtml = Boolean(article.bodyHtml)
 
   return (
     <>
       <div className="progress" style={{ width: `${progress}%` }} />
-      <header className="story-stage" style={{ backgroundImage: `url(${article.image})` }}>
+      <header className="story-stage" style={{ backgroundImage: `url(${cover})` }}>
         <div className="wrap story-stage__copy">
           <p className="crumb">
             <Link to="/blog">Blog</Link> / {article.category}
@@ -89,27 +109,33 @@ export function ArticlePage() {
           <SocialWidget tone="stack" title="Elsewhere" />
         </aside>
         <div className="story">
-          <p className="story-dek">{article.excerpt}</p>
-          <Prose blocks={article.content} />
+          {article.excerpt ? <p className="story-dek">{article.excerpt}</p> : null}
+          {isHtml ? (
+            <div className="prose prose--html" dangerouslySetInnerHTML={{ __html: article.bodyHtml }} />
+          ) : (
+            <Prose blocks={article.content} />
+          )}
         </div>
       </article>
-      <section className="story-more">
-        <div className="wrap">
-          <h2 className="read-next__title">Keep reading</h2>
-          <ul className="read-next">
-            {related.map((item) => (
-              <li key={item.slug}>
-                <Link to={`/blog/${item.slug}`}>
-                  <img src={item.image} alt="" />
-                  <span>{item.category}</span>
-                  <strong>{item.title}</strong>
-                  <em>{formatDate(item.date)}</em>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      {related.length ? (
+        <section className="story-more">
+          <div className="wrap">
+            <h2 className="read-next__title">Keep reading</h2>
+            <ul className="read-next">
+              {related.map((item) => (
+                <li key={item.slug}>
+                  <Link to={`/blog/${item.slug}`}>
+                    <img src={item.image} alt="" />
+                    <span>{item.category}</span>
+                    <strong>{item.title}</strong>
+                    <em>{formatDate(item.date)}</em>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
     </>
   )
 }

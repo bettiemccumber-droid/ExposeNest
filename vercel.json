@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
   "functions": {
     "api/posts/index.js": {
       "includeFiles": "src/data/articles.js"
